@@ -15,8 +15,11 @@ rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 
 cp "$BIN_DIR/Cheetos" "$CONTENTS/MacOS/Cheetos"
-if [ -d "$BIN_DIR/Cheetos_Cheetos.bundle" ]; then
-  cp -R "$BIN_DIR/Cheetos_Cheetos.bundle" "$CONTENTS/Resources/"
+# Copy resources into Contents/Resources (Apple-standard location). The Swift
+# code looks up `cheatsheets/` via Bundle.main first, falling back to
+# Bundle.module for `swift run` development.
+if [ -d "$BIN_DIR/Cheetos_Cheetos.bundle/cheatsheets" ]; then
+  cp -R "$BIN_DIR/Cheetos_Cheetos.bundle/cheatsheets" "$CONTENTS/Resources/"
 fi
 
 cat > "$CONTENTS/Info.plist" <<'PLIST'

@@ -37,6 +37,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .openCheetosSettings,
             object: nil
         )
+
+        // macOS may restore the empty SwiftUI Settings window from a previous
+        // session. Close anything that isn't our panel and mark it
+        // non-restorable so it doesn't reappear next launch.
+        closeStrayWindows()
+        DispatchQueue.main.async { [weak self] in self?.closeStrayWindows() }
+    }
+
+    private func closeStrayWindows() {
+        for window in NSApp.windows where window !== panel {
+            window.isRestorable = false
+            window.close()
+        }
     }
 
     // MARK: Status item
