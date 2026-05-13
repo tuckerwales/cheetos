@@ -110,7 +110,7 @@ final class CheatSheetLibrary: ObservableObject {
         var byId: [String: CheatSheet] = [:]
 
         // 1. Bundled defaults (read-only)
-        if let bundledDir = Bundle.module.url(forResource: "cheatsheets", withExtension: nil) {
+        if let bundledDir = Self.bundledCheatsheetsURL() {
             for url in (try? FileManager.default.contentsOfDirectory(at: bundledDir, includingPropertiesForKeys: nil)) ?? [] {
                 guard url.pathExtension.lowercased() == "md" else { continue }
                 let id = url.deletingPathExtension().lastPathComponent
@@ -169,6 +169,18 @@ final class CheatSheetLibrary: ObservableObject {
         guard !q.isEmpty else { return nil }
         if let m = commandIndex.first(where: { $0.key.lowercased().contains(q) }) { return m }
         return commandIndex.first(where: { $0.desc.lowercased().contains(q) })
+    }
+
+    /// Locate the bundled `cheatsheets/` directory.
+    ///
+    /// `build-app.sh` copies it to `Cheetos.app/Contents/Resources/cheatsheets/`
+    /// (Apple-standard, codesigns cleanly). For `swift run` we fall back to
+    /// `Bundle.module`, which resolves to the SPM build directory.
+    private static func bundledCheatsheetsURL() -> URL? {
+        if let url = Bundle.main.url(forResource: "cheatsheets", withExtension: nil) {
+            return url
+        }
+        return Bundle.module.url(forResource: "cheatsheets", withExtension: nil)
     }
 
     private static func title(from id: String) -> String {
