@@ -4,6 +4,8 @@ A macOS menu bar app for quickly viewing cheat sheets for command-line tools (vi
 
 Click the menu bar icon → search → pick a sheet from the sidebar, or press your global shortcut from anywhere.
 
+![Cheetos main window](docs/screenshots/main.png)
+
 ## Features
 
 - Menu bar app — no dock icon, lives quietly in your status bar
@@ -17,6 +19,8 @@ Click the menu bar icon → search → pick a sheet from the sidebar, or press y
 - Usage-aware sidebar ordering (most-used sheets float to the top)
 - ⌘1–⌘9 to jump to a sheet, ⌘F to focus search, ⌘, for Settings
 - Open at login toggle
+
+![Quick-action banner](docs/screenshots/quick-action.png)
 
 ## Requirements
 - macOS 14+
@@ -56,6 +60,8 @@ Bundled defaults (Git, Vim, Tmux, Bash, Docker, Kubectl, SSH, curl, find/grep, H
 ### Hiding sheets
 
 Don't need a sheet? Right-click it in the sidebar, click the eye-slash icon in the detail header, or toggle it in **Settings → Show / Hide Sheets**. Hidden sheets stay out of the sidebar, search results, and the quick-action banner until you re-enable them.
+
+![Show / Hide Sheets](docs/screenshots/hide-sheets.png)
 
 ### Supported markdown subset
 - `#`, `##`, `###` headings
