@@ -37,6 +37,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .openCheetosSettings,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidResignActive),
+            name: NSApplication.didResignActiveNotification,
+            object: nil
+        )
+
+        // macOS may restore the empty SwiftUI Settings window from a previous
+        // session. Close anything that isn't our panel and mark it
+        // non-restorable so it doesn't reappear next launch.
+        closeStrayWindows()
+        DispatchQueue.main.async { [weak self] in self?.closeStrayWindows() }
+    }
+
+    private func closeStrayWindows() {
+        for window in NSApp.windows where window !== panel {
+            window.isRestorable = false
+            window.close()
+        }
     }
 
     // MARK: Status item
@@ -80,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: Panel
 
     private func buildPanel() {
-        let size = NSSize(width: 680, height: 640)
+        let size = NSSize(width: 900, height: 680)
         panel = FloatingPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel, .resizable],
@@ -89,7 +108,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         panel.isFloatingPanel = true
         panel.level = .floating
-        panel.hidesOnDeactivate = true
+        // Don't use AppKit's hidesOnDeactivate — for nonactivating panels it
+        // hides the window but can leave `isVisible` reporting true, which
+        // breaks the toggle (first hotkey press orderOuts a hidden window,
+        // user has to press again). We hide explicitly on app resign instead.
+        panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = false
         panel.backgroundColor = .clear
         panel.isOpaque = false
@@ -116,6 +139,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         host.view.layer?.cornerRadius = 12
         host.view.layer?.masksToBounds = true
         host.view.layer?.cornerCurve = .continuous
+    }
+
+    @objc private func appDidResignActive() {
+        // Mirror hidesOnDeactivate behavior, but ensure isVisible flips to false.
+        if panel.isVisible {
+            panel.orderOut(nil)
+        }
     }
 
     @objc func togglePanel(_ sender: Any?) {

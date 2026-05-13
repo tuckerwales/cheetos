@@ -11,6 +11,8 @@ struct SettingsPage: View {
             stickyHeader
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    AboutHero()
+
                     section(title: "Your Cheat Sheets") {
                         HStack(spacing: 6) {
                             Image(systemName: "folder")
@@ -76,44 +78,27 @@ struct SettingsPage: View {
                     }
 
                     section(title: "General") {
-                        Toggle("Open at login", isOn: $settings.openAtLogin)
-                            .toggleStyle(.switch)
-                        if let err = settings.loginItemError {
-                            Text(err)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                        } else {
-                            Text("Launch Cheetos automatically when you sign in.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        SettingsRow(
+                            title: "Open at login",
+                            subtitle: settings.loginItemError ?? "Launch Cheetos automatically when you sign in.",
+                            subtitleIsError: settings.loginItemError != nil
+                        ) {
+                            Toggle("", isOn: $settings.openAtLogin)
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
                         }
                     }
 
                     section(title: "Keyboard Shortcut") {
-                        HStack {
-                            Text("Open Cheetos")
-                                .font(.system(size: 13))
-                            Spacer()
+                        SettingsRow(
+                            title: "Open Cheetos",
+                            subtitle: "Set a global shortcut to toggle the window from anywhere. Requires at least one modifier (⌘ ⌥ ⌃ ⇧)."
+                        ) {
                             ShortcutRecorder()
                         }
-                        Text("Set a global shortcut to toggle the window from anywhere. Requires at least one modifier (⌘ ⌥ ⌃ ⇧).")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
 
-                    section(title: "About") {
-                        HStack {
-                            Image(systemName: "doc.text.magnifyingglass")
-                                .font(.system(size: 28))
-                                .foregroundStyle(Color.accentColor)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Cheetos").font(.headline)
-                                Text("Quick cheat sheets, one click away.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 14)
@@ -174,6 +159,99 @@ struct SettingsPage: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .stroke(Color.primary.opacity(0.06), lineWidth: 1)
             )
+        }
+    }
+}
+
+private struct SettingsRow<Trailing: View>: View {
+    let title: String
+    let subtitle: String
+    var subtitleIsError: Bool = false
+    @ViewBuilder var trailing: () -> Trailing
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(subtitleIsError ? Color.red : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 12)
+            trailing()
+        }
+    }
+}
+
+private struct AboutHero: View {
+    private var versionLabel: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "0.0"
+        let build = info?["CFBundleVersion"] as? String ?? "0"
+        return "v\(short) (\(build))"
+    }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            AppIconView()
+                .frame(width: 56, height: 56)
+                .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Cheetos")
+                    .font(.system(size: 17, weight: .bold))
+                Text("Quick cheat sheets, one click away.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(versionLabel)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.primary.opacity(0.08))
+                )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.orange.opacity(0.18),
+                            Color.orange.opacity(0.04)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+}
+
+private struct AppIconView: View {
+    var body: some View {
+        if let icon = NSApp.applicationIconImage {
+            Image(nsImage: icon)
+                .resizable()
+                .interpolation(.high)
+        } else {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 28))
+                .foregroundStyle(Color.accentColor)
         }
     }
 }

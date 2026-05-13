@@ -8,6 +8,37 @@ struct ToolMeta {
     let tint: Color
 }
 
+enum BrandAssets {
+    static let logo: NSImage? = {
+        if let url = Bundle.main.url(forResource: "Logo", withExtension: "png"),
+           let img = NSImage(contentsOf: url) {
+            return img
+        }
+        if let url = Bundle.module.url(forResource: "Logo", withExtension: "png"),
+           let img = NSImage(contentsOf: url) {
+            return img
+        }
+        return nil
+    }()
+}
+
+struct LogoWatermark: View {
+    var size: CGFloat = 140
+    var opacity: Double = 0.10
+
+    var body: some View {
+        if let logo = BrandAssets.logo {
+            Image(nsImage: logo)
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .opacity(opacity)
+                .allowsHitTesting(false)
+        }
+    }
+}
+
 enum ToolCatalog {
     static func meta(for id: String) -> ToolMeta {
         switch id.lowercased() {
@@ -375,14 +406,24 @@ struct ContentView: View {
             CheatSheetView(sheet: sheet, highlight: search, onHide: { hide(sheet) })
                 .id(sheet.id)
         } else {
-            VStack(spacing: 6) {
+            VStack(spacing: 10) {
                 Spacer()
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.tertiary)
-                Text("No matches")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                ZStack {
+                    Circle()
+                        .fill(Color.primary.opacity(0.05))
+                        .frame(width: 64, height: 64)
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundStyle(.tertiary)
+                }
+                VStack(spacing: 3) {
+                    Text("No matches")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text("Try a different search, or press ⎋ to clear.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                }
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -392,24 +433,38 @@ struct ContentView: View {
     // MARK: Empty / footer
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 16) {
             Spacer()
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 32))
-                .foregroundStyle(.secondary)
-            if library.sheets.isEmpty {
-                Text("No cheat sheets found").font(.headline)
-                Text("Drop `.md` files into ~/.cheetos")
-                    .font(.caption)
+
+            LogoWatermark(size: 88, opacity: 1.0)
+                .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 4)
+
+            VStack(spacing: 4) {
+                Text(library.sheets.isEmpty ? "Welcome to Cheetos" : "All sheets are hidden")
+                    .font(.system(size: 17, weight: .semibold))
+                Text(library.sheets.isEmpty
+                     ? "Drop .md files into ~/.cheetos, or create one to get started."
+                     : "Turn some back on in Settings to bring them back.")
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
-            } else {
-                Text("All sheets are hidden").font(.headline)
-                Button("Open Settings to unhide…") {
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 280)
+            }
+
+            Button {
+                if library.sheets.isEmpty {
+                    NotificationCenter.default.post(name: .startNewSheet, object: nil)
+                } else {
                     showingSettings = true
                 }
-                .buttonStyle(.link)
-                .font(.caption)
+            } label: {
+                Label(library.sheets.isEmpty ? "New Sheet" : "Open Settings",
+                      systemImage: library.sheets.isEmpty ? "plus" : "gearshape")
+                    .font(.system(size: 12, weight: .medium))
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

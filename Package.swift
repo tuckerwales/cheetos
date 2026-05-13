@@ -10,7 +10,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Cheetos",
-            resources: [.copy("Resources/cheatsheets")]
+            resources: [
+                .copy("Resources/cheatsheets"),
+                .copy("Resources/Logo.png")
+            ]
         )
     ]
 )
