@@ -31,18 +31,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildStatusItem()
         buildPanel()
         setupHotkey()
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(openSettings),
-            name: .openCheetosSettings,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(appDidResignActive),
-            name: NSApplication.didResignActiveNotification,
-            object: nil
-        )
 
         // macOS may restore the empty SwiftUI Settings window from a previous
         // session. Close anything that isn't our panel and mark it
@@ -52,7 +40,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func closeStrayWindows() {
-        for window in NSApp.windows where window !== panel {
+        // Close only normal-level windows (e.g. SwiftUI's auto-restored
+        // empty Settings window). Skip the status-bar item's hosting window
+        // (level .statusBar) and our panel (level .floating).
+        for window in NSApp.windows where window !== panel && window.level == .normal {
             window.isRestorable = false
             window.close()
         }
@@ -68,32 +59,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             image?.isTemplate = true
             button.image = image
             button.target = self
-            button.action = #selector(statusItemClicked(_:))
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.action = #selector(togglePanel(_:))
+            // Fire on mouse-down. With the default (.leftMouseUp), the first
+            // click after the app goes to background can get absorbed by the
+            // OS activating the app and never reach our action.
+            button.sendAction(on: [.leftMouseDown, .rightMouseDown])
         }
-    }
-
-    @objc private func statusItemClicked(_ sender: Any?) {
-        let event = NSApp.currentEvent
-        if event?.type == .rightMouseUp {
-            showContextMenu()
-        } else {
-            togglePanel(sender)
-        }
-    }
-
-    private func showContextMenu() {
-        let menu = NSMenu()
-        menu.addItem(withTitle: "Open Cheetos", action: #selector(togglePanel(_:)), keyEquivalent: "")
-            .target = self
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
-            .target = self
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(withTitle: "Quit Cheetos", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        statusItem.menu = menu
-        statusItem.button?.performClick(nil)
-        statusItem.menu = nil
     }
 
     // MARK: Panel
@@ -102,17 +73,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let size = NSSize(width: 900, height: 680)
         panel = FloatingPanel(
             contentRect: NSRect(origin: .zero, size: size),
-            styleMask: [.borderless, .nonactivatingPanel, .resizable],
+            styleMask: [.borderless, .resizable],
             backing: .buffered,
             defer: false
         )
         panel.isFloatingPanel = true
         panel.level = .floating
-        // Don't use AppKit's hidesOnDeactivate — for nonactivating panels it
-        // hides the window but can leave `isVisible` reporting true, which
-        // breaks the toggle (first hotkey press orderOuts a hidden window,
-        // user has to press again). We hide explicitly on app resign instead.
-        panel.hidesOnDeactivate = false
+        panel.hidesOnDeactivate = true
         panel.isMovableByWindowBackground = false
         panel.backgroundColor = .clear
         panel.isOpaque = false
@@ -139,23 +106,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         host.view.layer?.cornerRadius = 12
         host.view.layer?.masksToBounds = true
         host.view.layer?.cornerCurve = .continuous
-    }
 
-    @objc private func appDidResignActive() {
-        // Mirror hidesOnDeactivate behavior, but ensure isVisible flips to false.
-        if panel.isVisible {
-            panel.orderOut(nil)
-        }
+        // Make sure isVisible is firmly false before the user can interact.
+        // Without this, the first status-item click sometimes hits the
+        // orderOut branch of togglePanel and the panel stays hidden.
+        panel.orderOut(nil)
     }
 
     @objc func togglePanel(_ sender: Any?) {
-        if panel.isVisible {
-            panel.orderOut(nil)
-        } else {
-            centerPanel()
-            NSApp.activate(ignoringOtherApps: true)
-            panel.makeKeyAndOrderFront(nil)
+        if NSApp.currentEvent?.type == .rightMouseDown {
+            showStatusMenu()
+            return
         }
+        let isShown = panel.isVisible && panel.occlusionState.contains(.visible)
+        if isShown {
+            panel.orderOut(nil)
+            return
+        }
+        centerPanel()
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    private func showStatusMenu() {
+        let menu = NSMenu()
+
+        let open = NSMenuItem(title: "Open Cheetos", action: #selector(togglePanel(_:)), keyEquivalent: "")
+        open.target = self
+        menu.addItem(open)
+
+        let prefs = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        prefs.target = self
+        menu.addItem(prefs)
+
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Quit Cheetos",
+                                action: #selector(NSApplication.terminate(_:)),
+                                keyEquivalent: "q"))
+
+        // Temporarily attach the menu; clicking the button now shows it.
+        // performClick presents it anchored to the status item, then we
+        // detach so left-click reverts to the action selector.
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
     }
 
     private func centerPanel() {
